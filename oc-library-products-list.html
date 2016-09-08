@@ -1,0 +1,34 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<!--
+`oc-library-products-list`
+Element to list all library products on the Ordercloud platform
+
+@demo demo/index.html 
+-->
+
+<dom-module id="oc-library-products-list">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+    </style>
+    <h2>Hello [[prop1]]</h2>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'oc-library-products-list',
+
+      properties: {
+        prop1: {
+          type: String,
+          value: 'oc-library-products-list',
+        },
+      },
+
+    });
+  </script>
+</dom-module>
