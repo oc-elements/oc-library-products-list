@@ -1,5 +1,14 @@
 <link rel="import" href="../polymer/polymer.html">
 
+<link rel="import" href="../oc-product-library-api/oc-product-library-api.html">
+<link rel="import" href="../iron-data-table/iron-data-table.html">
+<link rel="import" href="../oc-grid-controls/oc-grid-controls.html">
+<link rel="import" href="../oc-iron-data-table-styles/oc-iron-data-table-styles.html">
+<link rel="import" href="../oc-paginator/mercury-paginator.html">
+<link rel="import" href="../oc-tag-list/oc-tag-list.html">
+<link rel="import" href="../paper-material/paper-material.html">
+<link rel="import" href="../paper-button/paper-button.html">
+
 <!--
 `oc-library-products-list`
 Element to list all library products on the Ordercloud platform
@@ -13,20 +22,161 @@ Element to list all library products on the Ordercloud platform
       :host {
         display: block;
       }
+
+      paper-material {
+        background-color: #fff;
+        padding: 10px;
+      }
+
+      #dataTable data-table-row[even] {
+        background-color: #eee;
+      }
+
+      .tag-container {
+        width: 100%;
+      }
+
+      .tag {
+        display: block;
+        border: 1px solid #ddd;
+        background: #f8f8f8;
+        border-radius : 5px;
+        padding: 3px 5px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+        text-align: center;
+        font-size: 11px;
+        width: 100%;
+      }
+
+      .active {
+        border-color: forestgreen;
+        background: lightgreen;
+      }
+
+      #dataTable data-table-cell:not([header]) {
+        height: auto;
+      }
+
     </style>
-    <h2>Hello [[prop1]]</h2>
+
+    <oc-product-library-api id="prodApi"></oc-product-library-api>
+
+    <paper-material>
+      <paper-button id="newProductButton" on-tap="_onCreateTapped" raised>New Product</paper-button>
+      <oc-grid-controls data="[[ _items ]]" total-count="[[ _totalItems ]]" num-entries="[[ _pageSize ]]">
+        <iron-data-table
+                id="dataTable"
+                current-page="[[ _currentPage ]]"
+                loading="{{ loading }}">
+          <data-table-column name="Name" sort-by="name">
+            <template>[[item.name]]</template>
+          </data-table-column>
+          <data-table-column name="Price" sort-by="price">
+            <template>[[item.price]]</template>
+          </data-table-column>
+          <data-table-column name="SKU" sort-by="sku">
+            <template>[[item.sku]]</template>
+          </data-table-column>
+          <data-table-column name="Availability" align-center width="130px">
+            <template>
+              <div class="tag-container">
+                <div class$="tag {{_conditionalClass(item.availableOnline)}}">
+
+                  <span hidden$="{{!item.availableOnline}}">Available Online</span>
+                  <span hidden$="{{item.availableOnline}}">Not Available Online</span>
+                </div>
+              </div>
+
+            </template>
+          </data-table-column>
+          <data-table-column name="Tags" sort-by="tags">
+            <template>
+              <div hidden$="{{_hasTags(item.tags)}}">
+                No Tags
+              </div>
+              <div hidden$="{{!_hasTags(item.tags)}}">
+                <oc-tag-list tag-list="[[item.tags]]"></oc-tag-list>
+              </div>
+            </template>
+          </data-table-column>
+          <data-table-column name="# Images" sort-by="images">
+            <template>
+              [[item.images.length]]
+            </template>
+          </data-table-column>
+          <data-table-column name="Actions">
+            <template>
+              <div data-option-object$="[[ item ]]" >
+                <paper-icon-button id="edit" icon="create" title="Edit Product"  on-tap="_actionHandler"></paper-icon-button>
+                <paper-icon-button id="delete" icon="delete" title="Delete Product"  on-tap="_actionHandler"></paper-icon-button>
+              </div>
+            </template>
+          </data-table-column>
+        </iron-data-table>
+      </oc-grid-controls>
+    </paper-material>
   </template>
 
   <script>
     Polymer({
 
-      is: 'oc-library-products-list',
+      is: 'oc-local-products-list',
 
       properties: {
-        prop1: {
-          type: String,
-          value: 'oc-library-products-list',
-        },
+        organisationId : Number,
+        loading: {
+          type: Boolean,
+          notify: true
+        }
+
+      },
+
+      observers: [
+        'refresh(organisationId)'
+      ],
+
+      refresh: function() {
+        if (this.organisationId) {
+          this.loading = true;
+          this._getProducts(1, 10);
+        }
+      },
+
+      _getProducts : function(page, pageSize) {
+        this.loading = true;
+        this.$.prodApi.getProducts(page, pageSize)
+                .then(function(request) {
+                  this._items = request.response.results;
+                  this._totalItems = request.response.count;
+                  this._currentPage = page;
+                  this._pageSize = pageSize;
+                }.bind(this))
+                .catch(this.fire.bind(this, 'extra-set-error', 'Failed to load products'))
+                .finally(this.set.bind(this, 'loading', false));
+
+      },
+
+      _usesStockLevel : function(stockLevel){
+        return (stockLevel === null);
+      },
+
+      _conditionalClass: function(active) {
+        return active ? 'active' : '';
+      },
+
+      _hasTags : function(tagsArr){
+        return (tagsArr && tagsArr.length > 0)
+      },
+
+      _actionHandler: function(e) {
+        var extraObj = JSON.parse(Polymer.dom(event).localTarget.parentElement.getAttribute('data-option-object')),
+                action = e.target.getAttribute('id');
+        this.fire(action, extraObj);
+      },
+
+      _onCreateTapped: function() {
+        this.fire('create');
       },
 
     });
